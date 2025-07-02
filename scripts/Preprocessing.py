@@ -91,24 +91,21 @@ def extract_videos(mats: list, video_indices: range, excluded_ppn: list[int] = N
 
     return ecg_dict, gsr_dict     # Return two dicts mapping pid → df
 
-# load and extract phymer data
 def _load_signal(file_path: str, vid_num: int, col_name: str) -> pd.DataFrame:
     """
-    Read an EDA or BVP CSV from Empatica E4 and return a tidy (long-format)
-    DataFrame with columns  ['VideoID', col_name].
+    Read an EDA or BVP CSV from Empatica E4 and return a long-format
+    df with columns  ['VideoID', col_name].
 
     E4 CSVs have no header row, the first line is a timestamp,
-       the second line the sampling frequency, the rest the signal.
-    They also store several samples per row.  We flatten them.
+       the second line the sampling frequency, the rest is the signal.
+    They also store several samples per row, which are flattened
     """
     raw = pd.read_csv(file_path, header=None)
     signal_only = raw.iloc[2:, :] # drop the first two metadata rows (timestamp & freq)
-
-    # flatten the remaining values to 1D and drop NaNs
-    flat = (
-        signal_only.values                    # numpy array
-        .astype(float)                        # ensure numeric
-        .ravel(order="C")                     # 2-D → 1-D
+    flat = (                      # flatten the remaining values and drop NaNs
+        signal_only.values                   
+        .astype(float)                        
+        .ravel(order="C")                     
     )
     flat = flat[~pd.isna(flat)]              # remove NaNs
 
@@ -134,7 +131,7 @@ def load_phymer_data(root_dir):
         if not os.path.isdir(subj_path):
             continue
 
-        try:                            # "Sub01" → 1  |  "SUB12" → 12
+        try:                            # e.g. "Sub01" → 1 
             pid = int("".join(filter(str.isdigit, subj)))
         except ValueError:
             print(f"Cannot parse participant id from «{subj}» – skipped.")
@@ -150,7 +147,7 @@ def load_phymer_data(root_dir):
             try:                        # "SUB01VID07" → 7
                 vid_num = int("".join(filter(str.isdigit, vid_dir.split("VID")[-1])))
             except ValueError:
-                vid_num = vid_dir       # fallback: keep raw string
+                vid_num = vid_dir      
 
             base = vid_dir
             eda_file = os.path.join(vid_path, f"{base}_EDA_4.csv")
@@ -179,13 +176,13 @@ def convert_gsr(GSR_data):
     Args: 
         GSR_data (dict): Dictionary of DataFrames with a 'GSR' column (in Ohms).
     Returns: 
-        Same structure (dict) but with a new column with the converted GSR response 'GSR_uS' (in µS), and invalid (≤ 0) values removed.
+        Same structure (dict) but with a new column with the converted GSR response
+        'GSR_uS' (in µS), and invalid (≤ 0) values removed.
     """
     
     for ppn, df in GSR_data.items():
         df = df[df["GSR"] > 0].copy()  # filter and avoid SettingWithCopyWarning. remove corrupt/negative values
         df["GSR_uS"] = 1e6 / df["GSR"]  # convert
-        # df["GSR_uS"] = df["GSR_uS"].clip(upper=30) # remove unrealisticly high values due to no resistance
         GSR_data[ppn] = df  # update with cleaned + converted dataframe
     return GSR_data
 
@@ -242,7 +239,7 @@ def apply_butterworth(sig_dict, in_col="EDA_raw", out_col="EDA_filt",
 
 
 def within_subj_normalize(data_dict, signal_col, new_col=None):
-    """ Normalizes a filtered signal column per participant
+    """ Normalizes a filtered signal column per participant using within-participant z score normalization
 
     Params:
         data_dict: dict {participant_id: DataFrame}
@@ -272,10 +269,8 @@ def plot_gsr(df, col="GSR_z", group_col="VideoIndex", participant_id=None, sampl
         sample_range (tuple or None): Optional (start, end) sample indices to zoom in.
     """
     videos = sorted(df[group_col].unique(), key=str)
-
     for vid in videos:
         segment = df[df[group_col] == vid]
-
         if sample_range:
             segment = segment.iloc[sample_range[0]:sample_range[1]]
 

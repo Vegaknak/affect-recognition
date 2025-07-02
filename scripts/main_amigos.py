@@ -30,9 +30,8 @@ dtype={"rf__n_estimators":"Int16", "rf__max_depth":"Int16", "rf__min_samples_spl
 if __name__ == "__main__":
     # Load data using the portable Path objects
     mats = load_AMIGOS_data(DATA_DIR)
-    # Get labels and normalize
+    # Get labels 
     labels_df = process_labels_amigos(mats)
-    # labels_df = zscore_targets(labels_df) 
 
     # ---- Run preprocessing ---
     ecg_s, gsr_s = extract_videos(mats, range(0,16), excluded_ppn=[9], label="short")
@@ -42,7 +41,7 @@ if __name__ == "__main__":
 
     merged_short, merged_long = run_pipeline(
         ecg_s, gsr_s, ecg_l, gsr_l,
-        save_csv=(MERGED_SHORT_PKL, MERGED_LONG_PKL) # Pass the Path objects here
+        save_csv=(MERGED_SHORT_PKL, MERGED_LONG_PKL) 
     )
 
     # ---- Run analysis ---
@@ -51,7 +50,7 @@ if __name__ == "__main__":
 
     pers_df = pd.read_pickle(PCA_PATH)
     session_df = pd.read_excel(METADATA_PATH, sheet_name=0, dtype={"UserID": str})
-    merged_long  = exp_condition(merged_long, session_df)                               # add Alone_long column
+    merged_long  = exp_condition(merged_long, session_df) # add Alone_long column
 
     # define different feature sets 
     traits_cols      = ["ParticipantID", "Extroversion", "Agreeableness",
