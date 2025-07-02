@@ -25,8 +25,6 @@ from sklearn.model_selection import (
 )
 
 # # --------- functions ----------
-
-# load AMIGOS data by looping through directory
 def load_AMIGOS_data(path):
     """ Loops through directory with AMIGOS data and load .mat files.
     Args: 
@@ -47,7 +45,6 @@ def load_AMIGOS_data(path):
         else:
             print(f"Warning: File not found - {src}")
     return mats
-
 
 def exp_condition(df, session_df):
     """ Merge in session type and add flag for if person watched the long videos alone or with people.
@@ -70,10 +67,7 @@ def exp_condition(df, session_df):
                    on='ParticipantID', how='left')
     return out
 
-
 # ################## prepare for analysis ##################
-
-# get labels
 def process_labels_amigos(mats,
                             long_vid_codes=None,
                             short_only_pids=None):
@@ -120,7 +114,6 @@ def process_labels_amigos(mats,
             rows.append(row)
     return pd.DataFrame(rows)
 
-# get phymer labels
 def process_labels_phy(path: str) -> pd.DataFrame:
     """ Reads path to labels, select relevant rows, extract IDs & apply z-score normalization.
     Args:
@@ -147,38 +140,9 @@ def process_labels_phy(path: str) -> pd.DataFrame:
 
     # Keep relevant columns
     vid_labels = vid_labels[["ParticipantID", "VideoID", "arousal", "valence"]]
-
-    # Apply within-participant z-scoring
-    # labels_z = zscore_targets(
-    #     vid_labels,
-    #     pid_col="ParticipantID",
-    #     arousal_col="arousal",
-    #     valence_col="valence"
-    # )
+    
     return vid_labels
 
-
-# normalize labels
-def zscore_targets(labels, pid_col = "ParticipantID", arousal_col = "arousal", valence_col = "valence"):
-    """ Add within-participant z-scores of Arousal and Valence.
-    Args:
-        labels: df, with participantID column and the raw arousal/valence rating columns.
-        pid_col: column name that identifies participants. (ParticipantID)
-        arousal_col, valence_col: column names of the original targets.
-    Returns: 
-        df with new columns containing standardized y labels
-    """
-    df = labels.copy()
-    # z(x) = (x − μ_i) / σ_i, computed per participant i
-    for raw, zcol in [(arousal_col, "arousal"),
-                      (valence_col, "valence")]:
-        df[zcol] = (
-            df[raw] -
-            df.groupby(pid_col)[raw].transform("mean")
-        ) / df.groupby(pid_col)[raw].transform("std", ddof=0)
-    return df
-
-# get x, y and groups, drop unnecesary columns
 def prepare_dataset(merged_features, labels_df):
     """ Prepares dataset by merging features and labels by VideoID and ParticipantID
     Return X, y_arousal, y_valence, groups arrays and videoIDs
@@ -190,7 +154,6 @@ def prepare_dataset(merged_features, labels_df):
     # filter labels to those VideoIDs present
     vid_ids = merged_features['VideoID'].unique()
     labels = labels_df[labels_df['VideoID'].isin(vid_ids)].copy()
-
     
     # Merge features with labels to make sure labels align
     merged = merged_features.merge(
@@ -202,18 +165,17 @@ def prepare_dataset(merged_features, labels_df):
         columns=[
             'ParticipantID','VideoID',
             'Cluster_PC2',
-            'arousal','valence' # change back to ,'Arousal_z','Valence_z'
+            'arousal','valence' 
         ],
         errors='ignore'
     ).values
 
     # prepare targets and group labels
-    y_arousal = merged['arousal'].values # change to 'Arousal_z','Valence_z'
-    y_valence = merged['valence'].values # change to'Arousal_z','Valence_z'
+    y_arousal = merged['arousal'].values
+    y_valence = merged['valence'].values 
     groups = merged['ParticipantID'].values
     
     return X, y_arousal, y_valence, groups, merged, merged["VideoID"].values
-
 
 def evaluate_models(
     datasets,
@@ -295,7 +257,6 @@ def lopo_tune(X_tr, y_tr, groups_tr, pipeline, param_grid,
                           refit=True)        # refit on full train set. basically retrain the model with best hyper parameters
     search.fit(X_tr, y_tr, groups=groups_tr)
     return search          # best_estimator_ lives inside
-
 
 def run_experiment(X, y, groups, *,
                    pipeline, param_grid, scoring,
@@ -382,7 +343,6 @@ def run_experiment(X, y, groups, *,
     return metrics, best
 
 
-
 # ############### SVR AND RF FOR REGRESSION ###############
 def SVM_reg(X, y, groups, *, split_kwargs=None, fixed_params=None, video_ids=None):
     """ Execute SVR for regression
@@ -447,7 +407,6 @@ def RF_reg(X, y, groups, *, split_kwargs=None, fixed_params=None, video_ids=None
     'rf__max_features': ['sqrt', 0.5],
     "rf__max_samples":    [None, 0.8],
     }
-    # bootstrap is set to True by default
     
     metrics, search = run_experiment(
         X, y, groups,
@@ -484,7 +443,6 @@ def make_binary_labels(df, labels_z=False):
     df["Arousal_bin"] = (df["arousal"] > arousal_thresh).astype(int)
     df["Valence_bin"] = (df["valence"] > valence_thresh).astype(int)
     return df
-        
 
 # svc for classification
 def SVC_class(X, y, groups, *, split_kwargs=None, fixed_params=None, video_ids=None):
@@ -561,9 +519,7 @@ def RF_class(X, y, groups, *, split_kwargs=None, fixed_params=None, video_ids=No
     return metrics, search
 
 
-
-# final execution functions
-
+# ------- final execution functions --------
 
 # amigos
 def perform_analysis(merged_short, merged_long, labels_df,
@@ -667,7 +623,6 @@ def perform_analysis(merged_short, merged_long, labels_df,
     "labeled_long": merged_long_labeled
 } 
 
-
 # more or less same function but for phymer
 def phy_perform_analysis(
     feature_df: pd.DataFrame,
@@ -702,15 +657,15 @@ def phy_perform_analysis(
     reg_results = evaluate_models(
         reg_datasets,
         reg_models,
-        split_kwargs={},            # default LOPO
-        fixed_params=fixed_params   # or None for fresh grid-search
+        split_kwargs={},            
+        fixed_params=fixed_params  
     )
     
     # Classification
     class_results = {}
     if bi_class:
         # derive binary labels
-        bins = make_binary_labels(merged, labels_z = False) # split at midpoint (5.0)
+        bins = make_binary_labels(merged, labels_z = False) 
         class_datasets = {
             "arousal": {"X": X, "y": bins["Arousal_bin"].values, "groups": groups, "video_ids": video_ids},
             "valence": {"X": X, "y": bins["Valence_bin"].values, "groups": groups, "video_ids": video_ids},
@@ -720,7 +675,7 @@ def phy_perform_analysis(
         class_results = evaluate_models(
             class_datasets,
             class_models,
-            split_kwargs={},             # default LOPO
+            split_kwargs={},             
             fixed_params=fixed_params_class
         )
     else:

@@ -1,5 +1,5 @@
 from Preprocessing import extract_videos, convert_gsr, run_pipeline
-from models import load_AMIGOS_data, process_labels_amigos, zscore_targets, exp_condition, perform_analysis
+from models import load_AMIGOS_data, process_labels_amigos, exp_condition, perform_analysis
 import pandas as pd
 import pickle
 from pathlib import Path
@@ -35,15 +35,15 @@ if __name__ == "__main__":
     # labels_df = zscore_targets(labels_df) 
 
     # ---- Run preprocessing ---
-    # ecg_s, gsr_s = extract_videos(mats, range(0,16), excluded_ppn=[9], label="short")
-    # ecg_l, gsr_l = extract_videos(mats, range(16,20), excluded_ppn=[8,24,28], label="long")
-    # gsr_s = convert_gsr(gsr_s)
-    # gsr_l = convert_gsr(gsr_l)
+    ecg_s, gsr_s = extract_videos(mats, range(0,16), excluded_ppn=[9], label="short")
+    ecg_l, gsr_l = extract_videos(mats, range(16,20), excluded_ppn=[8,24,28], label="long")
+    gsr_s = convert_gsr(gsr_s)
+    gsr_l = convert_gsr(gsr_l)
 
-    # merged_short, merged_long = run_pipeline(
-    #     ecg_s, gsr_s, ecg_l, gsr_l,
-    #     save_csv=(MERGED_SHORT_PKL, MERGED_LONG_PKL) # Pass the Path objects here
-    # )
+    merged_short, merged_long = run_pipeline(
+        ecg_s, gsr_s, ecg_l, gsr_l,
+        save_csv=(MERGED_SHORT_PKL, MERGED_LONG_PKL) # Pass the Path objects here
+    )
 
     # ---- Run analysis ---
     merged_short = pd.read_pickle(MERGED_SHORT_PKL)
@@ -64,9 +64,9 @@ if __name__ == "__main__":
     cluster_pca_df = pers_df[cluster_pca_cols]
 
     variants = {
-        # "No_personality": (None, None),
-        # "Traits":         (traits_df, traits_df),
-        "Clusters":    (cluster_pca_df, cluster_pca_df),
+        "No_personality": (None, None),
+        "Traits":         (traits_df, traits_df),
+        "Clusters":       (cluster_pca_df, cluster_pca_df),
     }
 
 

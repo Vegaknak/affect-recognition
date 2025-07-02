@@ -16,16 +16,16 @@ PHYMER_DATA_ROOT = project_root / "PhyMER" / "PhyMER Dataset"
 if __name__ == "__main__":
     
     # ---- Run preprocessing ----
-    # root = "/Users/anna/Downloads/Scriptie_code/PhyMER"
-    # combined_features = run_phymer_pipeline(
-    #     root_dir        = root,
-    #     fs_eda          = 4,      
-    #     fs_bvp          = 64,     
-    #     bpf_fc          = 0.45,   
-    #     amp_min         = 0.1,   
-    #     save_csv        = "PHY_features.csv"
-    # )
-    # print(combined_features.head())
+    root = "/Users/anna/Downloads/Scriptie_code/PhyMER"
+    combined_features = run_phymer_pipeline(
+        root_dir        = root,
+        fs_eda          = 4,      
+        fs_bvp          = 64,     
+        bpf_fc          = 0.45,   
+        amp_min         = 0.1,   
+        save_csv        = "PHY_features.csv"
+    )
+    print(combined_features.head())
 
 
     # ---- Run analysis ----
@@ -47,8 +47,8 @@ if __name__ == "__main__":
     cluster_df     = pers_df[cluster_cols]
     
     variants = {
-        # "No_personality": None,
-        # "Traits":         traits_df,
+        "No_personality": None,
+        "Traits":         traits_df,
         "Clusters": cluster_df,
     }
 

@@ -4,7 +4,6 @@ from typing import Callable, Optional, Tuple, Dict, List, Any
 import scipy.io 
 import os
 import pandas as pd
-import seaborn as sns
 import neurokit2 as nk
 import matplotlib.pyplot as plt
 from scipy.stats.mstats import winsorize
@@ -12,74 +11,63 @@ import numpy as np
 import pickle
 from scipy.signal import butter, filtfilt
 
-N_PARTICIPANTS = 40 # global constant, number of participants
-
 # --------- loading & extracting data ----------
 
-# load AMIGOS data by looping through directory
 def load_AMIGOS_data(path):
     """ Loops through directory with AMIGOS data and load .mat files.
     Args: 
-        Parth, excluded participants
+        Path, excluded participants
     Returns: 
         mats, tuple.
     """
     mats = []
-    # Loop over all possible participant IDs
-    for i in range(N_PARTICIPANTS): # change back to 40 ppn
+    for i in range(40):
         pid = i + 1
-        # Construct expected filename
         filename = f"Data_Preprocessed_P{'0' if i < 9 else ''}{pid}"
         src = os.path.join(path, filename, f"{filename}.mat")
         if os.path.exists(src):
-            # Load .mat and append tuple
             mats.append((pid, scipy.io.loadmat(src)))
         else:
-            # Warn if file is missing
             print(f"Warning: File not found - {src}")
     return mats
 
-# extract ECG & GSR with exclusion of certain participants. When executing, this function for amigos is later ran twice, once for long vids and once for short vids
 def extract_videos(mats: list, video_indices: range, excluded_ppn: list[int] = None, label: str = "video"):
     """ Extract ECG (cols 14–15) and GSR (col 16) from loaded matlab variables.
     Args:
-        mats (list[(int, dict)]): Output of load_AMIGOS_data
-        video_indices (range): indices of joined_data to extract
-        excluded_ppn (list[int], optional): participant IDs to skip for this split
-        label (str): for logging
+        mats: Output of load_AMIGOS_data; dict with dataframes for each participant
+        video_indices: indices of joined_data to extract
+        excluded_ppn: list of participant IDs to skip for this split
+        label: logging video
     Returns:
         ecg_dict, gsr_dict : dict[int, pd.DataFrame]
     """
-    # convert exclusion list to a set for fast lookup
+    # convert exclusion list 
     excluded_set = set(excluded_ppn or [])
     ecg_dict: dict[int, pd.DataFrame] = {}
     gsr_dict: dict[int, pd.DataFrame] = {}
-    # iterate through each loaded participant
+
     for pid, mat in mats:
-        # skip this participant if excluded for this split
-        if pid in excluded_set:
+        if pid in excluded_set:  # skip if excluded 
             print(f"⏭️ Skipping participant {pid} ({label} exclusion).")
             continue
-        # get the joined_data matrix and VideoIDs array
+
         joined = mat.get("joined_data")
         vids = mat.get("VideoIDs")
-        # temporarily hold df for participant in the loop
+ 
         ecg_segments = []  
         gsr_segments = []  
 
-        # loop over desired video indices
         for idx in video_indices:
             data = joined[0, idx]      # raw signal array
             vid = vids[0, idx]         # unique video identifier
-
-            # Check data validity: must be numpy array with ≥17 columns
-            if not isinstance(data, np.ndarray) or data.shape[1] < 17:
+            
+            if not isinstance(data, np.ndarray) or data.shape[1] < 17:  # must be numpy array with ≥17 columns
                 print(f"⚠️ P{pid}, {label} {idx}: invalid data.")
                 continue
 
             n = data.shape[0]  # number of samples in segment
 
-            # Create df for ECG signals (Right and Left leads)
+            # create df for ECG signals (right and left leads)
             ecg_df = pd.DataFrame({
                 "ECG_Right":   data[:, 14],
                 "ECG_Left":    data[:, 15],
@@ -88,7 +76,7 @@ def extract_videos(mats: list, video_indices: range, excluded_ppn: list[int] = N
             })
             ecg_segments.append(ecg_df)
 
-            # Create df for GSR signal
+            # create df for GSR signal
             gsr_df = pd.DataFrame({
                 "GSR":         data[:, 16],
                 "VideoID":     np.full(n, vid),
@@ -96,14 +84,12 @@ def extract_videos(mats: list, video_indices: range, excluded_ppn: list[int] = N
             })
             gsr_segments.append(gsr_df)
 
-        # after processing all segments, concat into one df per participant
         if ecg_segments:
             ecg_dict[pid] = pd.concat(ecg_segments, ignore_index=True)
         if gsr_segments:
             gsr_dict[pid] = pd.concat(gsr_segments, ignore_index=True)
 
-    # Return two dicts mapping pid → df
-    return ecg_dict, gsr_dict
+    return ecg_dict, gsr_dict     # Return two dicts mapping pid → df
 
 # load and extract phymer data
 def _load_signal(file_path: str, vid_num: int, col_name: str) -> pd.DataFrame:
